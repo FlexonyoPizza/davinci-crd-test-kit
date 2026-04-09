@@ -8,7 +8,7 @@ on the [wiki](https://github.com/inferno-framework/davinci-crd-test-kit/wiki).
 
 ## Getting Started
 
-ASTP hosts a [public
+ONC hosts a [public
 instance](https://inferno.healthit.gov/test-kits/davinci-crd/) of this test
 kit that developers and testers are welcome to use. However, users are
 encouraged to download and run this tool locally to allow testing within private
