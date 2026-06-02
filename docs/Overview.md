@@ -1,15 +1,21 @@
 # Da Vinci CRD Test Kit Overview
 
-The **Da Vinci Coverage Requirements Discovery (CRD) STU 2.0.1 Test Kit** validates the 
-conformance of systems to the 
-[Da Vinci Coverage Requirements Discovery (CRD) STU 2.0.1 FHIR IG](https://hl7.org/fhir/us/davinci-crd/STU2/index.html).
+The **Da Vinci Coverage Requirements Discovery (CRD) Test Kit** is a testing tool designed
+to validate the conformance of CRD client and server systems to versions of the
+Da Vinci Coverage Requirements Discovery (CRD) FHIR Implementation Guide (IG), including
+- [Da Vinci Coverage Requirements Discovery (CRD) STU 2.0.1](https://hl7.org/fhir/us/davinci-crd/STU2), and
+- [Da Vinci Coverage Requirements Discovery (CRD) STU 2.2.1](https://hl7.org/fhir/us/davinci-crd/2.2.1)
 
 This document provides a high-level overview of the Test Kit, including its purpose, general testing
 approach, scope, limitations, and guidance on how to interpret results.
 
 ## Purpose
 
-The Da Vinci CRD Test Kit is designed to validate the conformance of healthcare IT systems against [version 2.0.1 of the HL7 FHIR Da Vinci Coverage Requirements Discovery (CRD) Implementation Guide (IG)](https://hl7.org/fhir/us/davinci-crd/STU2/). It helps implementers ensure their systems can correctly participate in coverage requirement discovery workflows as defined by the CRD IG.
+This test kit helps implementers ensure that their systems can correctly participate in
+coverage requirement discovery workflows as defined by the CRD IG. It does so by simulating
+an exchange partner for the system under test (when testing a CRD client Inferno will simulate
+a CRD server and vice-versa) and verifying that each exchange is conformant and that
+all exchanges in aggregate demonstrate the required capabilities.
 
 This test kit is [open source](#license) and freely available for use or
 adoption by the health IT community including EHR vendors, payer systems, health app
@@ -21,16 +27,12 @@ FHIR-based data exchange.
 ## Test Kit Structure
 
 The CRD Test Kit contains test suites to test the two actors defined by the CRD specification:
-- [CRD
-  Client](https://hl7.org/fhir/us/davinci-crd/STU2/CapabilityStatement-crd-client.html):
-  responsible for initiating CDS Hooks calls and consuming received decision
-  support. It is also responsible for returning data requested by the CRD Server
+- CRD clients: Clients are responsible for initiating CDS Hooks calls and consuming
+  received decision support. They are also responsible for returning data requested by the CRD server
   needed to provide that decision support. This role is played by provider systems
   in which orders are placed, such as EHRs. See the [Client Details](Client-Details.md) page
   for more information.
-- [CRD
-  Server](https://hl7.org/fhir/us/davinci-crd/STU2/CapabilityStatement-crd-server.html):
-  responsible for responding to CDS Hooks calls and responding with appropriate
+- CRD servers: Servers are responsible for responding to CDS Hooks calls and responding with appropriate
   decision support, which may involve using FHIR requests to gather more data from
   the client. See the [Server Details](Server-Details.md) page for more information.
 
@@ -62,8 +64,7 @@ While these tests cover core aspects of the CRD IG, there are known limitations:
 - Much of what the CRD IG specifies is optional, such as which hooks and resource
   types to support. These tests try to provide testers with an opportunity to
   exercise as much of their systems as they wish and validate that the exercised
-  behaviors are correct. However, not all areas of the IG are exercised. For example,
-  custom hook configuration is not tested.
+  behaviors are correct. However, some areas of the IG may not be exercised.
 - CRD workflows involve complex coordination between providers and payers around
   patients, orders, coverages, and other details. Inferno cannot know
   what entities are available in the system it is interacting with or what kinds
@@ -77,9 +78,15 @@ issues, please consult the following resources:
 - [Client Testing Limitations](https://github.com/inferno-framework/davinci-crd-test-kit/wiki/Client-Details#testing-limitations)
 - [Server Testing Limitations](https://github.com/inferno-framework/davinci-crd-test-kit/wiki/Server-Details#testing-limitations)
 - Relevant [requirements](https://inferno-framework.github.io/docs/advanced-test-features/requirements.html)
-  including those in the [CRD Requirements Spreadsheet](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/requirements/hl7.fhir.us.davinci-crd_2.0.1_requirements.xlsx),
-  the [CDS Hooks Requirements Spreadsheet](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/requirements/cds-hooks_2.0_requirements.xlsx),
-  and the [CDS Hooks Library Requirements Spreadsheet](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/requirements/cds-hooks-library_1.0.1_requirements.xlsx)
+  including those in the
+  - CRD Requirements Spreadsheets
+    - [v2.0.1](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/requirements/hl7.fhir.us.davinci-crd_2.0.1_requirements.xlsx)
+    - [v2.2.1](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/requirements/hl7.fhir.us.davinci-crd_2.2.1_requirements.xlsx)
+  - CDS Hooks Requirements Spreadsheets
+    - [v2.0 for CRD v2.0.1](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/requirements/cds-hooks_2.0_requirements.xlsx)
+    - [v3.0.0-ballot for CRD v2.2.1](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/requirements/cds-hooks_3.0.0-ballot_requirements.xlsx)
+    - Note: Although the CRD v2.2.1 [CDS Hooks background section](https://hl7.org/fhir/us/davinci-crd/2.2.1/en/background.html#cds-hooks) references "CDS Hooks 2.0", the IG declares and links to CDS Hooks 3.0.0-ballot; this test kit treats CDS Hooks 3.0.0-ballot as the applicable reference for CRD v2.2.1.
+  - [CDS Hooks Library Requirements Spreadsheet](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/requirements/cds-hooks-library_1.0.1_requirements.xlsx)
 - [CRD Test Kit GitHub Issues page](https://github.com/inferno-framework/davinci-crd-test-kit/issues).
 
 ## Conformance Criteria & Interpreting Results
@@ -90,8 +97,12 @@ A test run is considered successful if all mandatory tests pass:
 * **Warnings**: Highlight potential concerns that require manual review
 * **Skipped Tests**: Occur when prerequisites are not met
 
-Given the known limitations, passing all automated tests does **not** solely constitute full CRD IG conformance. Systems should also meet requirements verified through attestation or other means.
+Given the [known limitations](#test-scope-and-limitations), passing all automated tests does **not**
+solely constitute full CRD IG conformance. Systems should also meet requirements verified through
+attestation or other means.
 
 For specific testing prerequisites and detailed test descriptions, refer to:
-* [Client Instructions](Client-Instructions.md)
-* [Server Instructions](Server-Instructions.md)
+* [Client v2.0.1 Suite Testing Instructions](Client-Instructions.md)
+* [Client v2.2.1 Suite Testing Instructions](Client-Instructions-v2.2.1.md)
+* [Server v2.0.1 Suite Testing Instructions](Server-Instructions.md)
+* [Server v2.2.1 Suite Testing Instructions](Server-Instructions-v2.2.1.md)
