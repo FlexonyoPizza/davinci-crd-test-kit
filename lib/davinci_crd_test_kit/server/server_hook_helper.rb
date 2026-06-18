@@ -11,11 +11,11 @@ module DaVinciCRDTestKit
 
     # identify the hook to invoke
     def identify_hook(payloads)
-      if tested_hook_name == ANY_HOOK_TAG
+      if ALL_HOOK_TAGS.exclude? tested_hook_name
         hook_list_from_payloads = payloads.map { |body| body['hook'] }.uniq
 
         assert hook_list_from_payloads.length == 1,
-               'Could not identify the tested hook for the *Demonstrated Any Hook tests* from the request bodies.'
+               'Could not identify the tested hook from the request bodies.'
 
         hook_list_from_payloads.first
       else
