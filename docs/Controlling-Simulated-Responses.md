@@ -1,7 +1,7 @@
-# Controlling Responses from Inferno's Simulated CRD Service
+# Controlling Responses from Inferno's Simulated CRD Server
 
-During the CRD Client tests, provider systems are asked to demonstrate
-that they can handle conformant cards and system actions retured by CRD Payer Services
+During the CRD client tests, provider systems are asked to demonstrate
+that they can handle conformant cards and system actions retured by CRD server
 and allow users to see and take actions based on these returned details.
 However, provider systems are not expected to be able to handle all conformant
 responses because details within them, such as specific orders or terminologies
@@ -15,8 +15,9 @@ mock simple responses so that testers can get started more easily.
 
 ## Mocked Responses
 
-Inferno can generate (mostly) static versions of [each of the cards and system actions specified
-by the CRD IG](https://hl7.org/fhir/us/davinci-crd/STU2/cards.html). When no custom response
+Inferno can generate (mostly) static versions of each of the cards and system actions specified
+by the CRD IG ([v2.0.1](https://hl7.org/fhir/us/davinci-crd/STU2/cards.html),
+[v2.2.1](https://hl7.org/fhir/us/davinci-crd/2.2.1/cards.html)). When no custom response
 template is provided in the test inputs for a hook group, Inferno will mock an example of each
 card type selected in the "Response types to return..." input. In addition to the logic described
 below, all returned cards get a unique `uuid` and their summary is prefixed with the invoked hook.
@@ -77,7 +78,7 @@ below, all returned cards get a unique `uuid` and their summary is prefixed with
   a draft self-pay coverage for the patient indicated in the hook request (`context.patientId`).
 - **[Launch SMART Application](https://hl7.org/fhir/us/davinci-crd/STU2/cards.html#launch-smart-application)**:
   Inferno's [static launch SMART application card](https://github.com/inferno-framework/davinci-crd-test-kit/blob/main/lib/davinci_crd_test_kit/card_responses/launch_smart_app.json)
-  points to the launch url for the CRD Client test suite. 
+  points to the launch url for the CRD client test suite. 
 
 ## Tester-directed Custom Responses
 
@@ -109,6 +110,8 @@ Cards can be found in the top-level `cards` field. Testers are responsible for p
 replace it with a random uuid each time it is returned so that it will always be unique. The
 same is true for the `suggestion.uuid` field. The following configuration options are
 available to control which cards are returned for a given request and their content:
+- The [`com.inferno.includeForServices` extension](#cominfernoincludeforservices-extension) can
+  be included to limit the Inferno service endpoints for which the card is included in the response.
 - The [`com.inferno.inclusionCriteria` extension](#cominfernoinclusioncriteria-extension) can
   be included to limit the requests for which the card is included in the response. 
 - [Expression tokens](#expression-tokens) can appear in any descendant field or FHIR element to
@@ -129,6 +132,8 @@ is defined. In that case, the contents of the `resource` field will be merged in
 resource(s) when instantiating the action.
 
 The same configuration options and logic apply in both cases:
+- The [`com.inferno.includeForServices` extension](#cominfernoincludeforservices-extension) can
+  be included to limit the Inferno service endpoints for which the action is included in the response.
 - The [`com.inferno.inclusionCriteria` extension](#cominfernoinclusioncriteria-extension) can
   be included to limit the requests for which the action is included in the response. 
 - The [`com.inferno.resourceSelectionCriteria` extension](#cominfernoresourceselectioncriteria-extension)
@@ -148,12 +153,14 @@ string `default`. Specifics for each type of value:
   converted to a boolean (e.g., collection with one boolean `true` entry or one resource entry) after
   execution against the hook request, then the entity will be included in the response (see FHIRPath's rules for
   [conversion of collections to singletons](https://hl7.org/fhirpath/N1/index.html#singleton-evaluation-of-collections)
-  for details on what will constitute ). Otherwise, the entity is not included in the response.
+  for details on what will constitute a `true` result). Otherwise, the entity is not included in the
+  response.
 - *`default`*: The specifics depend of whether the entity is a card or action:
   - **Card**: If no other cards are (yet) included in the response, then this card will be included.
-  - **Action**: If there is no [`com.inferno.resourceSelectionCriteria` extension](#cominfernoresourceselectioncriteria-extension) and no other actions are (yet) included in the
-    response, then this card will be included. If there is a [`com.inferno.resourceSelectionCriteria` extension](#cominfernoresourceselectioncriteria-extension), then the action will be
-    instantiated against any selected resource for which no action has yet been
+  - **Action**: If there is no [`com.inferno.resourceSelectionCriteria` extension](#cominfernoresourceselectioncriteria-extension)
+    and no other actions are (yet) included in the response, then this card will be included.
+    If there is a [`com.inferno.resourceSelectionCriteria` extension](#cominfernoresourceselectioncriteria-extension),
+    then the action will be instantiated against any selected resource for which no action has yet been
     instantiated.
 
 This can be used, for example, to only include a card when the hook has been triggered
@@ -173,6 +180,57 @@ on a certain type of order:
 
 Notes:
 - This extension will be removed from the card or action before Inferno returns it to the requesting client.
+
+#### `com.inferno.includeForServices` Extension
+
+When defined on a card or action, this extension limits the Inferno service endpoints for which
+the entity will be included in the response. The extension value is a comma-delimited list of
+relative URL strings. Specifics for each type of value:
+- *No value*: If the extension is not present or has an empty value, then no service-based
+  filtering is applied and the entity is always eligible for inclusion (subject to any other
+  extensions such as `com.inferno.inclusionCriteria`).
+- *Comma-delimited URL list*: The entity is included only if at least one of the listed strings
+  is a substring of the URL path that received the hook request. Matching is case-sensitive.
+
+This is useful, for example, when you want Inferno to return different responses from the
+payers associated with Inferno's two endpoints (`cds-services/...` and `prefetch-subset/cds-services/...`).
+Only a single custom response template is associated with a test and it is used by
+both Inferno service endpoints.
+
+For example, to return a card only when the request is received for any of the `prefetch-subset` hooks:
+
+```json
+{
+  "cards": [
+    {
+      "summary": "Subset endpoint instructions",
+      "...",
+      "extension": {
+        "com.inferno.includeForServices": "prefetch-subset"
+      }
+    }
+  ]
+}
+```
+
+Or to include a card for both of Inferno's named order-sign endpoints but not others:
+
+```json
+{
+  "extension": {
+    "com.inferno.includeForServices": "cds-services/order-sign-service, prefetch-subset/cds-services/order-sign-subset"
+  }
+}
+```
+
+Notes:
+- This extension is evaluated before `com.inferno.inclusionCriteria`. If a card or action is
+  excluded by this extension, `com.inferno.inclusionCriteria` is not evaluated for that entity.
+- Shorter strings will match more broadly. For example, `prefetch-subset` matches any subset
+  endpoint while `prefetch-subset/cds-services/order-sign-subset` matches only the order-sign subset endpoint.
+- You can target all order-sign endpoints using `order-sign` or all order hooks with `order-`.
+- This extension will be removed from the card or action before Inferno returns it to the
+  requesting client.
 
 #### `com.inferno.resourceSelectionCriteria` Extension
 
@@ -253,13 +311,19 @@ Notes:
 - Entries within the returned collection that are not data types (lists or objects) will be ignored.
 - If multiple entries (not including ignored and nil entries) are returned, then the results will
   be turned into a comma-delimited list for use in replacing the token.
-- While the syntax follows CDS Hooks prefetch tokens, Inferno allows full FHIRPath expressions
-  instead of the limited set that CDS Hooks allows.
+- Inferno supports the raw `today()` function alone as well as with addition
+  and subtraction of days, e.g., `{{today()}}`, `{{today() - 7 days}}`, and
+  `{{today() + 365 days}}`.
+- While the syntax follows CDS Hooks prefetch tokens, Inferno allows additional FHIRPath functions
+  beyond the [limited set allowed by CDS Hooks](https://cds-hooks.hl7.org/2026Jan/en/#prefetch-tokens-containing-simpler-fhirpath)
+  when they are made on FHIR resources within the CDS Hooks request. See 
+  the [FHIRPath Evaluation Limitations](#fhirpath-evaluation-limitations) section for details.
+
 
 #### `coverage-information` Defaulting
 
 System actions that add the `coverage-information` extension to resources are a response type
-for which CRD requires client support. To help testers specify this card type, Inferno will
+for which the CRD IG requires client support. To help testers specify this card type, Inferno will
 populate the following `coverage-information` sub-extensions when not found in
 `coverage-information` extensions within the response template:
 - `coverage` sub-extension: Inferno will add a reference to the target Patient's coverage, as
@@ -281,7 +345,7 @@ engine. Inferno currently uses the FHIRPath engine built into the official HL7 F
 to evaluate FHIRPath expressions on FHIR resources. For CDS Hook request fields, Inferno implements
 a small subset of FHIRPath to bridge to the point in those requests that contain FHIR resources.
 
-Inferno's FHIRPath evaluation for CDS Hook requests provides the most limitations. Thes
+Inferno's FHIRPath evaluation for CDS Hook requests provides the most limitations. These include
 - The [FHIRPath expression](https://hl7.org/fhirpath/N1/index.html#expressions) must be
   a path with function calls. The use of literals and operators (e.g. the union operator
   `<exp 1> | <exp 2>`) is not currently supported.
@@ -291,16 +355,17 @@ Inferno's FHIRPath evaluation for CDS Hook requests provides the most limitation
 
 Note that once the path reaches a FHIR resource, then other features are supported, such as
 - the `ofType` function, e.g., `context.draftOrders.entry.resource.ofType(ServiceRequest)`
-- more complex where functions, e.g., `context.draftOrders.entry.resource.ofType(ServiceRequest).where(code.coding.code = '12345')`
+- more complex `where` functions, e.g., `context.draftOrders.entry.resource.ofType(ServiceRequest).where(code.coding.code = '12345')`
 
 Inferno's use of the HL7 FHIR Validator's FHIRPath engine comes with some restrictions as well.
 - The engine is not configured to resolve profiles or value sets. It has the base FHIR R4
   definions loaded, so functions like `ofType` will work, but types defined in IGs or elsewhere
   cannot be used.
-- The FHIRPath engine may not implement the entire [FHIRPath specication](https://hl7.org/fhirpath/N1/index.html).
+- The FHIRPath engine may not implement the entire [FHIRPath specication](https://hl7.org/fhirpath/N1/index.html),
+  for example the `resolve()` function is not supported.
 
-The Inferno team is open to adding support for additional FHIRPath functional. Please submit a
-[github issue](https://github.com/inferno-framework/davinci-crd-test-kit/issues) with details
+The Inferno team is open to adding support for additional FHIRPath functions. Please submit a
+[GitHub issue](https://github.com/inferno-framework/davinci-crd-test-kit/issues) with details
 of your use case and the additional features that you believe are necessary.
 
 ### Complete Example
@@ -387,6 +452,14 @@ prescription-strength Advil will be denied and a [card proposing](https://hl7.or
               {
                 "url": "pa-needed",
                 "valueCode": "no-auth"
+              },
+              {
+                "url": "date",
+                "valueDate": "{{today()}}"
+              },
+              {
+                "url": "expiry-date",
+                "valueCode": "{{today() + 7 days}}"
               }
             ]
           }
@@ -408,6 +481,14 @@ prescription-strength Advil will be denied and a [card proposing](https://hl7.or
               {
                 "url": "covered",
                 "valueCode": "not-covered"
+              },
+              {
+                "url": "date",
+                "valueDate": "{{today()}}"
+              },
+              {
+                "url": "expiry-date",
+                "valueCode": "{{today() + 7 days}}"
               }
             ]
           }
@@ -439,6 +520,14 @@ prescription-strength Advil will be denied and a [card proposing](https://hl7.or
               {
                 "url": "questionnaire",
                 "valueCanonical": "http://questionnaire.example.com/pa"
+              },
+              {
+                "url": "date",
+                "valueDate": "{{today()}}"
+              },
+              {
+                "url": "expiry-date",
+                "valueCode": "{{today() + 7 days}}"
               }
             ]
           }
@@ -590,6 +679,9 @@ The response contains:
   - Prescription-strength Advil: not covered (type, code, patient matched the inclusion criteria)
   - an MRI: prior auth required (type and code matched the inclusion criteria)
 
+This instantiation assumes that the request was made on `2026-01-01` for the
+purposes of the `today()` function.
+
 ```json
 {
   "cards": [
@@ -736,7 +828,11 @@ The response contains:
               },
               {
                 "url": "date",
-                "valueDate": "2025-12-30"
+                "valueDate": "2026-01-01"
+              },
+              {
+                "url": "expiry-date",
+                "valueDate": "2026-01-08"
               },
               {
                 "url": "coverage-assertion-id",
@@ -820,7 +916,11 @@ The response contains:
               },
               {
                 "url": "date",
-                "valueDate": "2025-12-30"
+                "valueDate": "2025-01-01"
+              },
+              {
+                "url": "expiry-date",
+                "valueDate": "2026-01-08"
               },
               {
                 "url": "coverage-assertion-id",
@@ -970,6 +1070,9 @@ The response contains:
   - Prescription-strength Advil: covered (from the default `systemAction` entry)
   - an MRI: prior auth required (type and code matched the inclusion criteria)
 
+This instantiation assumes that the request was made on `2026-01-02` for the
+purposes of the `today()` function.
+
 ```json
 {
   "cards": [],
@@ -1024,7 +1127,11 @@ The response contains:
               },
               {
                 "url": "date",
-                "valueDate": "2025-12-30"
+                "valueDate": "2025-01-02"
+              },
+              {
+                "url": "expiry-date",
+                "valueDate": "2026-01-09"
               },
               {
                 "url": "coverage-assertion-id",
@@ -1108,7 +1215,11 @@ The response contains:
               },
               {
                 "url": "date",
-                "valueDate": "2025-12-30"
+                "valueDate": "2025-01-02"
+              },
+              {
+                "url": "expiry-date",
+                "valueDate": "2026-01-09"
               },
               {
                 "url": "coverage-assertion-id",
@@ -1158,7 +1269,11 @@ The response contains:
               },
               {
                 "url": "date",
-                "valueDate": "2025-12-30"
+                "valueDate": "2025-01-02"
+              },
+              {
+                "url": "expiry-date",
+                "valueDate": "2026-01-09"
               },
               {
                 "url": "coverage-assertion-id",
